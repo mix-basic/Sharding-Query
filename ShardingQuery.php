@@ -178,18 +178,18 @@ class ShardingQuery
     public function select()
     {
         $this->stats = $this->stats($this->table);
-        $range       = $this->range($this->stats);
-        $sql         = $this->sql();
-        $data        = [];
+        $this->log(['stats' => $this->stats]);
+        $range = $this->range($this->stats);
+        $this->log(['range' => $range]);
+        $sql  = $this->sql();
+        $data = [];
         foreach ($range as $tableName => $item) {
-            $tmpSql        = str_replace(static::$tableSymbol, $tableName, $sql);
-            $tmpSql        = "{$tmpSql} LIMIT {$item['limit']} OFFSET {$item['offset']}";
-            $result        = call_user_func($this->callback, $tmpSql);
-            $data          = array_merge($data, $result);
-            $this->trace[] = [
-                'sql'      => $tmpSql,
-                'rowCount' => count($result),
-            ];
+            $tmpSql = str_replace(static::$tableSymbol, $tableName, $sql);
+            $tmpSql = "{$tmpSql} LIMIT {$item['limit']} OFFSET {$item['offset']}";
+            $this->log(['sql' => $tmpSql]);
+            $result = call_user_func($this->callback, $tmpSql);
+            $this->log(['resultCount' => count($result)]);
+            $data = array_merge($data, $result);
         }
         return $data;
     }
@@ -208,10 +208,12 @@ class ShardingQuery
             if (!empty($this->where)) {
                 $sql .= " WHERE {$this->where}";
             }
-            $sql               = str_replace(static::$tableSymbol, $tableName, $sql);
-            $result            = call_user_func($this->callback, $sql);
-            $first             = array_pop($result);
-            $count             = array_pop($first);
+            $sql = str_replace(static::$tableSymbol, $tableName, $sql);
+            $this->log(['sql' => $sql]);
+            $result = call_user_func($this->callback, $sql);
+            $first  = array_pop($result);
+            $count  = array_pop($first);
+            $this->log(['result' => $count]);
             $start             = $end;
             $end               += $count;
             $stats[$tableName] = [
@@ -243,31 +245,24 @@ class ShardingQuery
                     'offset' => $start - $item['start'],
                     'limit'  => $end - $start,
                 ];
-                continue;
-            }
-            if ($before) {
+            } elseif ($before) {
                 $tables[$table] = [
                     'offset' => $start - $item['start'],
                     'limit'  => $item['end'] - $start,
                 ];
-                if ($tables[$table]['limit'] == 0) {
-                    unset($tables[$table]);
-                }
-                continue;
-            }
-            if ($after) {
+            } elseif ($after) {
                 $tables[$table] = [
                     'offset' => 0,
                     'limit'  => $end - $item['start'],
                 ];
-                continue;
-            }
-            if ($center) {
+            } elseif ($center) {
                 $tables[$table] = [
                     'offset' => 0,
                     'limit'  => $item['end'] - $item['start'],
                 ];
-                continue;
+            }
+            if (isset($tables[$table]['limit']) && $tables[$table]['limit'] === 0) {
+                unset($tables[$table]);
             }
         }
         return $tables;
@@ -319,6 +314,14 @@ class ShardingQuery
         $last   = array_pop($stats);
         $number = array_pop($last);
         return $number ?: 0;
+    }
+
+    /**
+     * 记录日志
+     */
+    protected function log($message)
+    {
+        $this->trace[] = $message;
     }
 
     /**
