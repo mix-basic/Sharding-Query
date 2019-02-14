@@ -150,14 +150,14 @@ class ShardingQuery
                     $this->$key = $value;
                     break;
                 case 'limit':
-                    if (!is_int($value)) {
-                        throw new \RuntimeException("'limit' is not a int type.");
+                    if (!is_numeric($value)) {
+                        throw new \RuntimeException("'limit' is not a numeric type.");
                     }
                     $this->$key = $value;
                     break;
                 case 'offset':
-                    if (!is_int($value)) {
-                        throw new \RuntimeException("'offset' is not a int type.");
+                    if (!is_numeric($value)) {
+                        throw new \RuntimeException("'offset' is not a numeric type.");
                     }
                     $this->$key = $value;
                     break;
