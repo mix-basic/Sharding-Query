@@ -176,12 +176,12 @@ class ShardingQuery
         $sql         = $this->sql();
         $data        = [];
         foreach ($range as $tableName => $item) {
-            $sql           = str_replace('{table}', $tableName, $sql);
-            $sql           = "{$sql} LIMIT {$item['limit']} OFFSET {$item['offset']}";
-            $result        = call_user_func($this->callback, $sql);
+            $tmpSql        = str_replace('{table}', $tableName, $sql);
+            $tmpSql        = "{$tmpSql} LIMIT {$item['limit']} OFFSET {$item['offset']}";
+            $result        = call_user_func($this->callback, $tmpSql);
             $data          = array_merge($data, $result);
             $this->trace[] = [
-                'sql'      => $sql,
+                'sql'      => $tmpSql,
                 'rowCount' => count($result),
             ];
         }
