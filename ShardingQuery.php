@@ -88,6 +88,12 @@ class ShardingQuery
     protected $trace;
 
     /**
+     * 表通配符
+     * @var string
+     */
+    protected static $tableSymbol = '{table}';
+
+    /**
      * ShardingQuery constructor.
      * @param array $config
      */
@@ -176,7 +182,7 @@ class ShardingQuery
         $sql         = $this->sql();
         $data        = [];
         foreach ($range as $tableName => $item) {
-            $tmpSql        = str_replace('{table}', $tableName, $sql);
+            $tmpSql        = str_replace(static::$tableSymbol, $tableName, $sql);
             $tmpSql        = "{$tmpSql} LIMIT {$item['limit']} OFFSET {$item['offset']}";
             $result        = call_user_func($this->callback, $tmpSql);
             $data          = array_merge($data, $result);
@@ -202,6 +208,7 @@ class ShardingQuery
             if (!empty($this->where)) {
                 $sql .= " WHERE {$this->where}";
             }
+            $sql               = str_replace(static::$tableSymbol, $tableName, $sql);
             $result            = call_user_func($this->callback, $sql);
             $first             = array_pop($result);
             $count             = array_pop($first);
