@@ -7,16 +7,17 @@
 ThinkPHP 5
 
 ```php
-$shardingQuery = new ShardingQuery(
-    'think\Db::query',
-    [
+$shardingQuery = new ShardingQuery([
+    'callback' => 'think\Db::query',
+    'table'    => [
         'order',
-        'order_history',
+        'order_201805',
+        'order_201804',
     ],
-    'SELECT * FROM {table}',
-    10,
-    0
-);
+    'field'    => '*',
+    'where'    => 'member_id = 10001',
+    'offset'   => 32,
+    'limit'    => 3,
+]);
 $res           = $shardingQuery->select();
-var_dump($res);
 ```

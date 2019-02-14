@@ -2,6 +2,7 @@
 
 /**
  * 根据时间同构分表的查询类
+ * @package app\common\library
  * @author LIUJIAN <coder.keda@gmail.com>
  */
 class ShardingQuery
@@ -19,13 +20,25 @@ class ShardingQuery
      * 根据顺序查询
      * @var array
      */
-    public $tables;
+    public $table;
 
     /**
-     * 查询语句
+     * 字段
      * @var string
      */
-    public $sql;
+    public $field;
+
+    /**
+     * 条件
+     * @var string
+     */
+    public $where;
+
+    /**
+     * 排序
+     * @var string
+     */
+    public $order;
 
     /**
      * 限制数
@@ -40,24 +53,63 @@ class ShardingQuery
     public $offset;
 
     /**
-     * 数据表的通配符
-     * @var string
+     * 统计
+     * @var array
      */
-    protected static $tableSymbol = '{table}';
+    protected $stats;
 
     /**
-     * ShardingSelect constructor.
-     * @param array $tables
-     * @param callable $callback
-     * @param string $sql
+     * ShardingQuery constructor.
+     * @param array $config
      */
-    public function __construct(callable $callback, array $tables, string $sql, int $limit, int $offset)
+    public function __construct(array $config)
     {
-        $this->callback = $callback;
-        $this->tables   = $tables;
-        $this->sql      = $sql;
-        $this->limit    = $limit;
-        $this->offset   = $offset;
+        foreach ($config as $key => $value) {
+            switch ($key) {
+                case 'callback':
+                    if (!is_callable($value)) {
+                        throw new \RuntimeException("'callback' is not a callable type.");
+                    }
+                    $this->$key = $value;
+                    break;
+                case 'table':
+                    if (!is_array($value)) {
+                        throw new \RuntimeException("'table' is not a array type.");
+                    }
+                    $this->$key = $value;
+                    break;
+                case 'field':
+                    if (!is_string($value)) {
+                        throw new \RuntimeException("'field' is not a string type.");
+                    }
+                    $this->$key = $value;
+                    break;
+                case 'where':
+                    if (!is_string($value)) {
+                        throw new \RuntimeException("'where' is not a string type.");
+                    }
+                    $this->$key = $value;
+                    break;
+                case 'order':
+                    if (!is_string($value)) {
+                        throw new \RuntimeException("'order' is not a string type.");
+                    }
+                    $this->$key = $value;
+                    break;
+                case 'limit':
+                    if (!is_int($value)) {
+                        throw new \RuntimeException("'limit' is not a int type.");
+                    }
+                    $this->$key = $value;
+                    break;
+                case 'offset':
+                    if (!is_int($value)) {
+                        throw new \RuntimeException("'offset' is not a int type.");
+                    }
+                    $this->$key = $value;
+                    break;
+            }
+        }
     }
 
     /**
@@ -66,28 +118,112 @@ class ShardingQuery
      */
     public function select()
     {
-        $data = [];
-        foreach ($this->tables as $num => $table) {
-            if (count($data) < $this->limit) {
-                $limit  = $this->limit;
-                $offset = $this->offset;
-                if ($num > 0) {
-                    $limit  = $this->limit - count($data);
-                    $offset = 0;
-                }
-                $sql    = "{$this->sql} LIMIT {$limit} OFFSET {$offset}";
-                $sql    = str_replace(static::$tableSymbol, $table, $sql);
-                $result = call_user_func($this->callback, $sql);
-                if (empty($result)) {
-                    return $data;
-                }
-                $data = array_merge($data, $result);
+        $this->stats = $this->stats($this->table);
+        $range       = $this->range($this->stats);
+        $data        = [];
+        foreach ($range as $tableName => $item) {
+            $sql = "SELECT {$this->field} FROM `{$tableName}`";
+            if (!empty($this->where)) {
+                $sql .= " WHERE {$this->where}";
             }
-            if (count($data) >= $this->limit) {
-                return $data;
+            if (!empty($this->order)) {
+                $sql .= " ORDER BY {$this->order}";
             }
+            $sql    = "{$sql} LIMIT {$item['limit']} OFFSET {$item['offset']}";
+            $result = call_user_func($this->callback, $sql);
+            $data   = array_merge($data, $result);
         }
         return $data;
+    }
+
+    /**
+     * 获取表的统计信息
+     * @param $table
+     * @return array
+     */
+    protected function stats($table)
+    {
+        $end   = 0;
+        $stats = [];
+        foreach ($table as $num => $tableName) {
+            $sql = "SELECT COUNT(*) FROM `{$tableName}`";
+            if (!empty($this->where)) {
+                $sql .= " WHERE {$this->where}";
+            }
+            $result            = call_user_func($this->callback, $sql);
+            $first             = array_pop($result);
+            $count             = array_pop($first);
+            $start             = $end;
+            $end               += $count;
+            $stats[$tableName] = [
+                'start' => $start,
+                'end'   => $end,
+            ];
+        }
+        return $stats;
+    }
+
+    /**
+     * 获取要提取的表数据范围
+     * @param $stats
+     * @return array
+     */
+    protected function range($stats)
+    {
+        $limit  = $this->limit;
+        $offset = $this->offset;
+        $start  = $offset;
+        $end    = $offset + $limit;
+        $tables = [];
+        foreach ($stats as $table => $item) {
+            $before = $item['start'] <= $start && $item['end'] >= $start ? true : false;
+            $center = $item['start'] > $start && $item['end'] < $end ? true : false;
+            $after  = $item['start'] <= $end && $item['end'] >= $end ? true : false;
+            if ($before && $after) {
+                $tables[$table] = [
+                    'offset' => $start - $item['start'],
+                    'limit'  => $end - $start,
+                ];
+                continue;
+            }
+            if ($before) {
+                $tables[$table] = [
+                    'offset' => $start - $item['start'],
+                    'limit'  => $item['end'] - $start,
+                ];
+                if ($tables[$table]['limit'] == 0) {
+                    unset($tables[$table]);
+                }
+                continue;
+            }
+            if ($after) {
+                $tables[$table] = [
+                    'offset' => 0,
+                    'limit'  => $end - $item['start'],
+                ];
+                continue;
+            }
+            if ($center) {
+                $tables[$table] = [
+                    'offset' => 0,
+                    'limit'  => $item['end'] - $item['start'],
+                ];
+                continue;
+            }
+        }
+        return $tables;
+    }
+
+    /**
+     * 获取数据总数
+     * @return int
+     */
+    public function count()
+    {
+        $stats  = $this->stats;
+        $last   = array_pop($stats);
+        $number = array_pop($last);
+        return $number ?: 0;
     }
 
 }
