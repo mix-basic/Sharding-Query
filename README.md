@@ -1,6 +1,6 @@
 ## ShardingQuery
 
-根据时间分表的数据查询类
+分表数据查询类
 
 ## 使用方法
 
@@ -14,10 +14,16 @@ $shardingQuery = new ShardingQuery([
         'order_201805',
         'order_201804',
     ],
-    'field'    => '*',
-    'where'    => 'member_id = 10001',
-    'offset'   => 32,
-    'limit'    => 3,
+    'field'    => '{table}.*, u.name',
+    'leftJoin' => [
+        'user AS u ON u.member_id = {table}.member_id',
+    ],
+    'where'    => '{table}.member_id = 10001 AND status = 1',
+    'order'    => '{table}.add_time DESC',
+    'offset'   => 0,
+    'limit'    => 10,
 ]);
 $res           = $shardingQuery->select();
+$count         = $shardingQuery->count();
+$trace         = $shardingQuery->trace();
 ```

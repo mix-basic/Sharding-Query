@@ -1,8 +1,7 @@
 <?php
 
 /**
- * 根据时间同构分表的查询类
- * @package app\common\library
+ * 分表数据查询类
  * @author LIUJIAN <coder.keda@gmail.com>
  */
 class ShardingQuery
@@ -27,6 +26,30 @@ class ShardingQuery
      * @var string
      */
     public $field;
+
+    /**
+     * join
+     * @var array
+     */
+    public $innerJoin;
+
+    /**
+     * join
+     * @var array
+     */
+    public $leftJoin;
+
+    /**
+     * join
+     * @var array
+     */
+    public $rightJoin;
+
+    /**
+     * join
+     * @var array
+     */
+    public $fullJoin;
 
     /**
      * 条件
@@ -59,6 +82,12 @@ class ShardingQuery
     protected $stats;
 
     /**
+     * 追踪
+     * @var array
+     */
+    protected $trace;
+
+    /**
      * ShardingQuery constructor.
      * @param array $config
      */
@@ -81,6 +110,30 @@ class ShardingQuery
                 case 'field':
                     if (!is_string($value)) {
                         throw new \RuntimeException("'field' is not a string type.");
+                    }
+                    $this->$key = $value;
+                    break;
+                case 'innerJoin':
+                    if (!is_array($value)) {
+                        throw new \RuntimeException("'innerJoin' is not a array type.");
+                    }
+                    $this->$key = $value;
+                    break;
+                case 'leftJoin':
+                    if (!is_array($value)) {
+                        throw new \RuntimeException("'leftJoin' is not a array type.");
+                    }
+                    $this->$key = $value;
+                    break;
+                case 'rightJoin':
+                    if (!is_array($value)) {
+                        throw new \RuntimeException("'rightJoin' is not a array type.");
+                    }
+                    $this->$key = $value;
+                    break;
+                case 'fullJoin':
+                    if (!is_array($value)) {
+                        throw new \RuntimeException("'fullJoin' is not a array type.");
                     }
                     $this->$key = $value;
                     break;
@@ -120,18 +173,17 @@ class ShardingQuery
     {
         $this->stats = $this->stats($this->table);
         $range       = $this->range($this->stats);
+        $sql         = $this->sql();
         $data        = [];
         foreach ($range as $tableName => $item) {
-            $sql = "SELECT {$this->field} FROM `{$tableName}`";
-            if (!empty($this->where)) {
-                $sql .= " WHERE {$this->where}";
-            }
-            if (!empty($this->order)) {
-                $sql .= " ORDER BY {$this->order}";
-            }
-            $sql    = "{$sql} LIMIT {$item['limit']} OFFSET {$item['offset']}";
-            $result = call_user_func($this->callback, $sql);
-            $data   = array_merge($data, $result);
+            $sql           = str_replace('{table}', $tableName, $sql);
+            $sql           = "{$sql} LIMIT {$item['limit']} OFFSET {$item['offset']}";
+            $result        = call_user_func($this->callback, $sql);
+            $data          = array_merge($data, $result);
+            $this->trace[] = [
+                'sql'      => $sql,
+                'rowCount' => count($result),
+            ];
         }
         return $data;
     }
@@ -215,6 +267,42 @@ class ShardingQuery
     }
 
     /**
+     * 生成sql
+     * @return string
+     */
+    protected function sql()
+    {
+        $sql = "SELECT {$this->field} FROM `{table}`";
+        if (!empty($this->innerJoin)) {
+            foreach ($this->innerJoin as $item) {
+                $sql .= " INNER JOIN {$item}";
+            }
+        }
+        if (!empty($this->leftJoin)) {
+            foreach ($this->leftJoin as $item) {
+                $sql .= " LEFT JOIN {$item}";
+            }
+        }
+        if (!empty($this->rightJoin)) {
+            foreach ($this->rightJoin as $item) {
+                $sql .= " RIGHT JOIN {$item}";
+            }
+        }
+        if (!empty($this->fullJoin)) {
+            foreach ($this->fullJoin as $item) {
+                $sql .= " FULL JOIN {$item}";
+            }
+        }
+        if (!empty($this->where)) {
+            $sql .= " WHERE {$this->where}";
+        }
+        if (!empty($this->order)) {
+            $sql .= " ORDER BY {$this->order}";
+        }
+        return $sql;
+    }
+
+    /**
      * 获取数据总数
      * @return int
      */
@@ -224,6 +312,15 @@ class ShardingQuery
         $last   = array_pop($stats);
         $number = array_pop($last);
         return $number ?: 0;
+    }
+
+    /**
+     * 获取追踪数据
+     * @return array
+     */
+    public function trace()
+    {
+        return $this->trace;
     }
 
 }
