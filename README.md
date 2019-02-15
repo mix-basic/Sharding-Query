@@ -4,11 +4,13 @@
 
 ## 使用方法
 
-ThinkPHP 5
+ThinkPHP 5 的范例，支持任何框架，只需修改 `query` 参数的闭包代码。
 
 ```php
 $shardingQuery = new ShardingQuery([
-    'callback' => 'think\Db::query',
+    'query'    => function ($sql) {
+        return \think\Db::query($sql);
+    },
     'table'    => [
         'order',
         'order_201805',
@@ -23,7 +25,22 @@ $shardingQuery = new ShardingQuery([
     'offset'   => 0,
     'limit'    => 10,
 ]);
-$res           = $shardingQuery->select();
+// 查询结果
+$result        = $shardingQuery->select();
+// 总行数
 $count         = $shardingQuery->count();
+// 追踪数据，用于调试
 $trace         = $shardingQuery->trace();
 ```
+
+全部参数：
+
+- `query`：执行 sql 返回结果的闭包，接收一个 $sql 参数，返回查询结果。
+- `table`：要查询的多个同构表的清单，数组类型。
+- `field`：select 选择的列名，字符串类型。
+- `innerJoin`：join信息，数组类型。
+- `leftJoin`：join信息，数组类型。
+- `where`：查询条件，字符串类型。
+- `order`：排序，字符串类型。
+- `offset`：偏移数，整数类型。
+- `limit`：限制数，整数类型。

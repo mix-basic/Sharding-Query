@@ -8,11 +8,10 @@ class ShardingQuery
 {
 
     /**
-     * 数据库查询的回调
-     * 回调必须返回数组类型
-     * @var callable
+     * 查询闭包
+     * @var \Closure
      */
-    public $callback;
+    public $query;
 
     /**
      * 数据表列表
@@ -28,28 +27,16 @@ class ShardingQuery
     public $field;
 
     /**
-     * join
+     * innerJoin
      * @var array
      */
     public $innerJoin;
 
     /**
-     * join
+     * leftJoin
      * @var array
      */
     public $leftJoin;
-
-    /**
-     * join
-     * @var array
-     */
-    public $rightJoin;
-
-    /**
-     * join
-     * @var array
-     */
-    public $fullJoin;
 
     /**
      * 条件
@@ -101,9 +88,9 @@ class ShardingQuery
     {
         foreach ($config as $key => $value) {
             switch ($key) {
-                case 'callback':
-                    if (!is_callable($value)) {
-                        throw new \RuntimeException("'callback' is not a callable type.");
+                case 'query':
+                    if (!($value instanceof \Closure)) {
+                        throw new \RuntimeException("'query' is not a closure type.");
                     }
                     $this->$key = $value;
                     break;
@@ -128,18 +115,6 @@ class ShardingQuery
                 case 'leftJoin':
                     if (!is_array($value)) {
                         throw new \RuntimeException("'leftJoin' is not a array type.");
-                    }
-                    $this->$key = $value;
-                    break;
-                case 'rightJoin':
-                    if (!is_array($value)) {
-                        throw new \RuntimeException("'rightJoin' is not a array type.");
-                    }
-                    $this->$key = $value;
-                    break;
-                case 'fullJoin':
-                    if (!is_array($value)) {
-                        throw new \RuntimeException("'fullJoin' is not a array type.");
                     }
                     $this->$key = $value;
                     break;
@@ -187,7 +162,7 @@ class ShardingQuery
             $tmpSql = str_replace(static::$tableSymbol, $tableName, $sql);
             $tmpSql = "{$tmpSql} LIMIT {$item['limit']} OFFSET {$item['offset']}";
             $this->log(['sql' => $tmpSql]);
-            $result = call_user_func($this->callback, $tmpSql);
+            $result = call_user_func($this->query, $tmpSql);
             $this->log(['resultCount' => count($result)]);
             $data = array_merge($data, $result);
         }
@@ -210,8 +185,8 @@ class ShardingQuery
             }
             $sql = str_replace(static::$tableSymbol, $tableName, $sql);
             $this->log(['sql' => $sql]);
-            $result = call_user_func($this->callback, $sql);
-            $first  = array_pop($result);
+            $result = call_user_func($this->query, $sql);
+            $first  = (array)array_pop($result);
             $count  = array_pop($first);
             $this->log(['result' => $count]);
             $start             = $end;
@@ -285,16 +260,6 @@ class ShardingQuery
                 $sql .= " LEFT JOIN {$item}";
             }
         }
-        if (!empty($this->rightJoin)) {
-            foreach ($this->rightJoin as $item) {
-                $sql .= " RIGHT JOIN {$item}";
-            }
-        }
-        if (!empty($this->fullJoin)) {
-            foreach ($this->fullJoin as $item) {
-                $sql .= " FULL JOIN {$item}";
-            }
-        }
         if (!empty($this->where)) {
             $sql .= " WHERE {$this->where}";
         }
@@ -317,7 +282,7 @@ class ShardingQuery
     }
 
     /**
-     * 记录日志
+     * 记录追踪数据
      */
     protected function log($message)
     {
