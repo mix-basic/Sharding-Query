@@ -1,10 +1,13 @@
 <?php
 
+namespace ShardingQuery;
+
 /**
  * 分表数据查询类
+ * @package ShardingQuery
  * @author LIUJIAN <coder.keda@gmail.com>
  */
-class ShardingQuery
+class Query
 {
 
     /**

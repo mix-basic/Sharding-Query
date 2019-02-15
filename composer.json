@@ -1,0 +1,25 @@
+{
+  "name": "mix/sharding-query",
+  "description": "数据库分表分页查询库 (不依赖框架)",
+  "type": "library",
+  "keywords": [
+    "sharding",
+    "query"
+  ],
+  "homepage": "https://github.com/mix-basic/Sharding-Query",
+  "license": "Apache-2.0",
+  "authors": [
+    {
+      "name": "Jian Liu",
+      "email": "coder.liu@qq.com"
+    }
+  ],
+  "require": {
+    "php": ">=5.4.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "ShardingQuery\\": "src/"
+    }
+  }
+}

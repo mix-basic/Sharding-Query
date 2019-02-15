@@ -7,7 +7,7 @@
 ThinkPHP 5 的范例，支持任何框架，只需修改 `query` 参数的闭包代码。
 
 ```php
-$shardingQuery = new ShardingQuery([
+$query = new \ShardingQuery\Query([
     'query'    => function ($sql) {
         return \think\Db::query($sql);
     },
@@ -26,11 +26,11 @@ $shardingQuery = new ShardingQuery([
     'limit'    => 10,
 ]);
 // 查询结果
-$result        = $shardingQuery->select();
+$result        = $query->select();
 // 总行数，用于分页
-$count         = $shardingQuery->count();
+$count         = $query->count();
 // 追踪数据，用于调试
-$trace         = $shardingQuery->trace();
+$trace         = $query->trace();
 ```
 
 全部参数：
