@@ -27,7 +27,7 @@ $shardingQuery = new ShardingQuery([
 ]);
 // 查询结果
 $result        = $shardingQuery->select();
-// 总行数
+// 总行数，用于分页
 $count         = $shardingQuery->count();
 // 追踪数据，用于调试
 $trace         = $shardingQuery->trace();
@@ -44,3 +44,7 @@ $trace         = $shardingQuery->trace();
 - `order`：排序，字符串类型。
 - `offset`：偏移数，整数类型。
 - `limit`：限制数，整数类型。
+
+## License
+
+Apache License Version 2.0, http://www.apache.org/licenses/
