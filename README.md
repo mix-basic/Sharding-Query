@@ -2,6 +2,14 @@
 
 分表数据查询类
 
+## 安装
+
+使用 `composer` 安装：
+
+```
+composer require mix/sharding-query
+```
+
 ## 使用方法
 
 ThinkPHP 5 的范例，支持任何框架，只需修改 `query` 参数的闭包代码。
